@@ -134,8 +134,8 @@ reference_positions = reference_poses[:, :3]
 
 # Apply ICP
 final_R, final_t,  aligned_source_positions = icp(source_positions, reference_positions)
-print("Rotation:", final_R)
-print("Translation:", final_t)
+print("Rotation:\n", final_R)
+print("Translation:\n", final_t)
 
 # Extract quaternion data
 source_quaternions = source_poses[:, 3:]
