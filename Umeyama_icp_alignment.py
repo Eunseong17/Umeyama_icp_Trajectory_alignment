@@ -2,6 +2,7 @@ import numpy as np
 import argparse
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import os
 
 def read_pose_data(file_path):
     """
@@ -46,10 +47,7 @@ def rigid_transform_3D(A, B):
 
     return R, t
 
-# The rest of the script remains the same, except the assert line is removed.
 # This function now handles source and reference data of different lengths.
-
-
 def nearest_neighbor(src, dst):
     """
     Find the nearest (Euclidean) neighbor in dst for each point in src.
@@ -60,30 +58,31 @@ def nearest_neighbor(src, dst):
         indices[i] = np.argmin(distances)
     return indices
 
-def icp(A, B, init_pose=None, max_iterations=100, tolerance=0.001):
-    """
-    The Iterative Closest Point method: finds best fit to align two point clouds.
-    """
+
+def icp(A, B, max_iterations=100, tolerance=0.001):
     src = np.copy(A)
     dst = np.copy(B)
 
-    if init_pose is not None:
-        R, t = init_pose
-        src = (R @ src.T).T + t
+    # 초기 변환 행렬 설정
+    final_R = np.eye(3)
+    final_t = np.zeros((3,))
 
     prev_error = 0
-    
+
     for i in range(max_iterations):
-        
-        # Find the nearest neighbors between the current source and destination points
+        # 현재 소스와 대상 간 가장 가까운 이웃 찾기
         indices = nearest_neighbor(src, dst)
-        # Compute the transformation between the current source and nearest destination points
+        # 현재 소스와 가장 가까운 대상 포인트 간 변환 계산
         R, t = rigid_transform_3D(src, dst[indices, :])
 
-        # Update the current source
+        # 현재 소스 업데이트
         src = (R @ src.T).T + t
 
-        # Check error
+        # 누적 변환 행렬 업데이트
+        final_t = R @ final_t + t
+        final_R = R @ final_R
+
+        # 오류 체크
         mean_error = np.mean(np.linalg.norm(src - dst[indices, :], axis=1))
         print("ICP #",i, "mean_error : ", mean_error)
         if np.abs(prev_error - mean_error) < tolerance:
@@ -91,9 +90,8 @@ def icp(A, B, init_pose=None, max_iterations=100, tolerance=0.001):
             break
         prev_error = mean_error
 
-    # Calculate final transformation
+    return final_R, final_t, (final_R @ A.T).T + final_t
 
-    return R, t, src
 
 # Parse command line arguments
 parser = argparse.ArgumentParser(description='Rigid transformation between two sets of poses.')
@@ -120,7 +118,7 @@ with open(args.src, 'r') as file:
     lines = file.readlines()
 
 # aligned_source_positions와 함께 새로운 내용으로 파일 쓰기
-output_filename = 'modified_'+args.src
+output_filename = 'modified_' + args.src
 with open(output_filename, 'w') as file:
     for i, line in enumerate(lines):
         parts = line.strip().split()

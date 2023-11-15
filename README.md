@@ -1,4 +1,4 @@
-# Umeyama icp alignmen
+# Umeyama icp alignment
 
 You don't need to consider timestamp sinc between two trajectory  
 txt file format : TUM (timestamp x y z qx qy qz qw)  
