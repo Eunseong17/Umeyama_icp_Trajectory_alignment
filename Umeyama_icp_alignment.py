@@ -2,7 +2,31 @@ import numpy as np
 import argparse
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-import os
+from scipy.spatial.transform import Rotation as R
+
+def quaternion_to_matrix(quat):
+    """
+    Converts a quaternion to a rotation matrix.
+    """
+    return R.from_quat(quat).as_matrix()
+
+def matrix_to_quaternion(matrix):
+    """
+    Converts a rotation matrix to a quaternion.
+    """
+    return R.from_matrix(matrix).as_quat()
+
+def update_quaternions(original_quaternions, rotation_matrix):
+    """
+    Updates the quaternions based on the rotation matrix from ICP.
+    """
+    updated_quats = []
+    for quat in original_quaternions:
+        original_matrix = quaternion_to_matrix(quat)
+        updated_matrix = rotation_matrix @ original_matrix
+        updated_quat = matrix_to_quaternion(updated_matrix)
+        updated_quats.append(updated_quat)
+    return np.array(updated_quats)
 
 def read_pose_data(file_path):
     """
@@ -113,21 +137,25 @@ final_R, final_t,  aligned_source_positions = icp(source_positions, reference_po
 print("Rotation:", final_R)
 print("Translation:", final_t)
 
+# Extract quaternion data
+source_quaternions = source_poses[:, 3:]
+updated_source_quaternions = update_quaternions(source_quaternions, final_R)
+
+
 # 원본 소스 파일 읽기
 with open(args.src, 'r') as file:
     lines = file.readlines()
 
 # aligned_source_positions와 함께 새로운 내용으로 파일 쓰기
 output_filename = 'modified_' + args.src
+# Writing the new file with updated positions and quaternions
 with open(output_filename, 'w') as file:
     for i, line in enumerate(lines):
         parts = line.strip().split()
         if i < len(aligned_source_positions):
-            # x y z 좌표만 교체
-            new_line = f"{parts[0]} {aligned_source_positions[i][0]:.6f} {aligned_source_positions[i][1]:.6f} {aligned_source_positions[i][2]:.6f} {' '.join(parts[4:])}\n"
+            new_line = f"{parts[0]} {aligned_source_positions[i][0]:.6f} {aligned_source_positions[i][1]:.6f} {aligned_source_positions[i][2]:.6f} {updated_source_quaternions[i][0]:.6f} {updated_source_quaternions[i][1]:.6f} {updated_source_quaternions[i][2]:.6f} {updated_source_quaternions[i][3]:.6f}\n"
             file.write(new_line)
         else:
-            # aligned_source_positions보다 더 많은 줄이 있을 경우, 원본 내용 유지
             file.write(line)
 
 print(f"Modified source positions with original timestamps saved to {output_filename}")
