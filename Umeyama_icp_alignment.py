@@ -120,7 +120,7 @@ with open(args.src, 'r') as file:
     lines = file.readlines()
 
 # aligned_source_positions와 함께 새로운 내용으로 파일 쓰기
-output_filename = 'modified.txt'
+output_filename = 'modified_'+args.src
 with open(output_filename, 'w') as file:
     for i, line in enumerate(lines):
         parts = line.strip().split()
